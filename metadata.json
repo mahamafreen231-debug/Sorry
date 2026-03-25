@@ -1,0 +1,5 @@
+{
+  "name": "Midnight Vault",
+  "description": "A surprise digital vault for my fiancé with a heartfelt letter and a photobooth.",
+  "requestFramePermissions": ["camera"]
+}
