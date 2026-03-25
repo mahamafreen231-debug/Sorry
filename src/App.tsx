@@ -24,11 +24,31 @@ export default function App() {
   const [showFlash, setShowFlash] = useState(false);
   const [caption, setCaption] = useState('');
   const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const [showHearts, setShowHearts] = useState(false);
+  const [floatingHearts, setFloatingHearts] = useState<{ id: number; left: string; size: number; duration: number }[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Starfield generation
   const [stars, setStars] = useState<{ id: number; left: string; top: string; size: string; duration: string }[]>([]);
+
+  const triggerHearts = () => {
+    setShowHearts(true);
+    const newHearts = Array.from({ length: 20 }).map((_, i) => ({
+      id: Date.now() + i,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() * 20 + 20,
+      duration: Math.random() * 2 + 2,
+    }));
+    setFloatingHearts(newHearts);
+    
+    // Play a subtle pop/sparkle sound
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
+    audio.volume = 0.3;
+    audio.play().catch(() => {});
+
+    setTimeout(() => setShowHearts(false), 4000);
+  };
 
   useEffect(() => {
     const newStars = Array.from({ length: 60 }).map((_, i) => ({
@@ -274,6 +294,24 @@ export default function App() {
         ))}
       </div>
 
+      <AnimatePresence>
+        {showHearts && floatingHearts.map(heart => (
+          <motion.div
+            key={heart.id}
+            initial={{ y: '100vh', opacity: 0, scale: 0.5 }}
+            animate={{ y: '-10vh', opacity: [0, 1, 1, 0], scale: [0.5, 1.2, 1] }}
+            transition={{ duration: heart.duration, ease: "easeOut" }}
+            className="fixed z-[100] pointer-events-none"
+            style={{ left: heart.left }}
+          >
+            <Heart 
+              size={heart.size} 
+              className="text-[#ff758f] fill-[#ff758f] drop-shadow-[0_0_10px_rgba(255,117,143,0.8)]" 
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {stage === 1 && (
           <motion.div
@@ -479,6 +517,16 @@ export default function App() {
                   <Download className="w-5 h-5" />
                   Download Framed Photo
                 </button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={triggerHearts}
+                  className="w-full py-3 rounded-xl border-2 border-[#ff758f] text-[#ff758f] font-bold uppercase tracking-widest hover:bg-[#ff758f]/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Heart className="w-5 h-5 fill-[#ff758f]" />
+                  I Love You
+                </motion.button>
               </motion.div>
             )}
             
