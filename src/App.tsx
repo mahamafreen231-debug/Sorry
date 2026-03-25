@@ -23,6 +23,7 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [showFlash, setShowFlash] = useState(false);
   const [caption, setCaption] = useState('');
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -30,12 +31,12 @@ export default function App() {
   const [stars, setStars] = useState<{ id: number; left: string; top: string; size: string; duration: string }[]>([]);
 
   useEffect(() => {
-    const newStars = Array.from({ length: 50 }).map((_, i) => ({
+    const newStars = Array.from({ length: 60 }).map((_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       top: `${Math.random() * 100}%`,
-      size: `${Math.random() * 3}px`,
-      duration: `${10 + Math.random() * 20}s`,
+      size: `${Math.random() * 2 + 1}px`,
+      duration: `${15 + Math.random() * 25}s`,
     }));
     setStars(newStars);
   }, []);
@@ -43,7 +44,7 @@ export default function App() {
   // Stage 1: Password Check
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.toLowerCase() === 'love') {
+    if (password.toLowerCase().trim() === 'love') {
       setStage(2);
     } else {
       setError(true);
@@ -53,8 +54,13 @@ export default function App() {
 
   // Stage 2: Teleport No Button
   const teleportNoButton = () => {
-    const newTop = Math.random() * 80 + 10;
-    const newLeft = Math.random() * 80 + 10;
+    // Avoid the center area where the "Yes" button is
+    let newTop, newLeft;
+    do {
+      newTop = Math.random() * 80 + 10;
+      newLeft = Math.random() * 80 + 10;
+    } while (newTop > 40 && newTop < 60 && newLeft > 40 && newLeft < 60);
+    
     setNoButtonPos({ top: `${newTop}%`, left: `${newLeft}%` });
   };
 
@@ -95,9 +101,14 @@ export default function App() {
   }, [stage, capturedImage]);
 
   const startCamera = async () => {
+    setIsCameraLoading(true);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' } 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1080 },
+          height: { ideal: 1080 }
+        } 
       });
       setStream(mediaStream);
       if (videoRef.current) {
@@ -105,6 +116,9 @@ export default function App() {
       }
     } catch (err) {
       console.error("Camera error:", err);
+      alert("Please enable camera access to use the photobooth! ❤️");
+    } finally {
+      setIsCameraLoading(false);
     }
   };
 
@@ -319,13 +333,21 @@ export default function App() {
               <motion.button
                 onMouseEnter={teleportNoButton}
                 onTouchStart={teleportNoButton}
+                animate={{ 
+                  top: noButtonPos.top, 
+                  left: noButtonPos.left,
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 20 
+                }}
                 style={{
                   position: 'fixed',
-                  top: noButtonPos.top,
-                  left: noButtonPos.left,
                   zIndex: 50
                 }}
-                className="px-8 py-2 bg-white/10 border border-white/20 text-white/50 rounded-full cursor-default"
+                className="px-8 py-2 bg-white/10 border border-white/20 text-white/50 rounded-full cursor-default whitespace-nowrap"
               >
                 No
               </motion.button>
@@ -368,7 +390,7 @@ export default function App() {
               {cleanText("Wait! Now smile for me... I want to see that beautiful face!")}
             </h2>
             
-            <div className="relative aspect-square w-full bg-black rounded-2xl overflow-hidden mb-6 border border-white/10">
+            <div className="relative aspect-square w-full bg-black rounded-2xl overflow-hidden mb-6 border border-white/10 shadow-2xl">
               {/* Flash Overlay */}
               <AnimatePresence>
                 {showFlash && (
@@ -382,6 +404,16 @@ export default function App() {
                 )}
               </AnimatePresence>
 
+              {isCameraLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 border-2 border-[#ff758f] border-t-transparent rounded-full"
+                  />
+                </div>
+              )}
+
               {!capturedImage ? (
                 <>
                   <video
@@ -391,10 +423,11 @@ export default function App() {
                     className="w-full h-full object-cover"
                     style={{ transform: 'scaleX(-1)' }}
                   />
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                  <div className="absolute bottom-6 left-0 right-0 flex justify-center">
                     <button
                       onClick={capturePhoto}
-                      className="p-4 bg-[#ff758f] rounded-full neon-glow hover:scale-110 transition-transform"
+                      disabled={isCameraLoading}
+                      className="p-5 bg-[#ff758f] rounded-full neon-glow hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
                     >
                       <Camera className="w-8 h-8 text-white" />
                     </button>
@@ -406,7 +439,7 @@ export default function App() {
                   <div className="absolute top-4 right-4">
                     <button
                       onClick={() => setCapturedImage(null)}
-                      className="p-2 bg-black/50 backdrop-blur-md rounded-full text-white"
+                      className="p-3 bg-black/60 backdrop-blur-xl rounded-full text-white hover:bg-black/80 transition-colors shadow-lg"
                     >
                       <RefreshCw className="w-5 h-5" />
                     </button>
@@ -450,6 +483,15 @@ export default function App() {
             )}
             
             <canvas ref={canvasRef} className="hidden" />
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              transition={{ delay: 2 }}
+              className="mt-8 text-xs text-white/40 font-sans tracking-widest uppercase"
+            >
+              Made with love for my favorite person
+            </motion.p>
           </motion.div>
         )}
       </AnimatePresence>
